@@ -2,6 +2,8 @@
 
 Load testing suite for the [Careers@Gov Booth Finder](https://find.careers.gov.sg/) web application, built for the **Public Service Careers Fair on 18 April 2026** at Suntec City Hall 401 & 402.
 
+**[View Latest Load Test Report](https://kenken64.github.io/k6-career-fair-loadtest/)**
+
 ## Requirements
 
 - **macOS / Linux**
@@ -92,7 +94,9 @@ After running the full load test, reports are generated in the project root:
 | `report.json` | Raw JSON metrics for custom analysis |
 | `load-test-report.md` | Markdown summary report |
 
-Open the HTML report:
+**View online:** https://kenken64.github.io/k6-career-fair-loadtest/
+
+Open locally:
 
 ```bash
 open report.html

@@ -1,0 +1,103 @@
+name: K6 Load Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: "Test mode to run"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - smoke
+          - full
+          - all
+
+jobs:
+  smoke-test:
+    if: ${{ inputs.test_mode == 'smoke' || inputs.test_mode == 'all' }}
+    name: Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+
+      - name: Run smoke test
+        run: k6 run smoke-test.js
+
+  full-load-test:
+    if: |
+      always() &&
+      (inputs.test_mode == 'full' || inputs.test_mode == 'all') &&
+      (needs.smoke-test.result == 'success' || needs.smoke-test.result == 'skipped')
+    needs: smoke-test
+    name: Full Load Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+
+      - name: Run full load test
+        run: k6 run load-test.js
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-reports-${{ github.run_number }}
+          path: |
+            report.html
+            report.json
+          retention-days: 30
+
+  deploy-report:
+    if: |
+      always() &&
+      (inputs.test_mode == 'full' || inputs.test_mode == 'all') &&
+      needs.full-load-test.result == 'success'
+    needs: full-load-test
+    name: Deploy Report to GitHub Pages
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download latest reports
+        uses: actions/download-artifact@v4
+        with:
+          name: load-test-reports-${{ github.run_number }}
+          path: .
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "."
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

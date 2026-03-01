@@ -10,6 +10,7 @@ on:
         type: choice
         options:
           - smoke
+          - quick
           - full
           - all
 
@@ -35,13 +36,44 @@ jobs:
       - name: Run smoke test
         run: k6 run smoke-test.js
 
+  quick-load-test:
+    if: ${{ inputs.test_mode == 'quick' }}
+    name: Quick Load Test (5m)
+    runs-on: ubuntu-latest
+    env:
+      TZ: Asia/Singapore
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install -y k6
+
+      - name: Run quick load test
+        run: k6 run load-test-quick.js
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-reports-${{ github.run_number }}
+          path: |
+            report.html
+            report.json
+          retention-days: 30
+
   full-load-test:
     if: |
       always() &&
       (inputs.test_mode == 'full' || inputs.test_mode == 'all') &&
       (needs.smoke-test.result == 'success' || needs.smoke-test.result == 'skipped')
     needs: smoke-test
-    name: Full Load Test
+    name: Full Load Test (52m)
     runs-on: ubuntu-latest
     env:
       TZ: Asia/Singapore
@@ -73,9 +105,10 @@ jobs:
   deploy-report:
     if: |
       always() &&
-      (inputs.test_mode == 'full' || inputs.test_mode == 'all') &&
-      (needs.full-load-test.result == 'success' || needs.full-load-test.result == 'failure')
-    needs: full-load-test
+      (inputs.test_mode == 'quick' || inputs.test_mode == 'full' || inputs.test_mode == 'all') &&
+      (needs.quick-load-test.result == 'success' || needs.quick-load-test.result == 'failure' ||
+       needs.full-load-test.result == 'success' || needs.full-load-test.result == 'failure')
+    needs: [quick-load-test, full-load-test]
     name: Deploy Report to GitHub Pages
     runs-on: ubuntu-latest
     env:

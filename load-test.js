@@ -18,13 +18,26 @@ import { textSummary } from "https://jslib.k6.io/k6-summary/0.1.0/index.js";
 //   2. Questionnaire page load
 //   3. Get matching roles (API query)
 //   4. Generate & download PDF (API mutation)
+//
+// Weighted distribution (realistic user drop-off):
+//   - 100% of users hit the landing page
+//   - 80%  proceed to the questionnaire page
+//   - 70%  complete the questionnaire and get matching roles
+//   - 30%  generate & download the PDF
 // ============================================================
 
-// --- Custom Metrics ---
-const landingPageDuration = new Trend("landing_page_duration", true);
-const questionnaireDuration = new Trend("questionnaire_page_duration", true);
-const matchingRolesDuration = new Trend("matching_roles_api_duration", true);
-const generatePdfDuration = new Trend("generate_pdf_api_duration", true);
+// --- User Journey Drop-off Rates ---
+const DROP_OFF = {
+  PROCEED_TO_QUESTIONNAIRE: 0.80,  // 80% continue past landing
+  COMPLETE_QUESTIONNAIRE:   0.70,  // 70% finish & view results
+  DOWNLOAD_PDF:             0.30,  // 30% download the PDF
+};
+
+// --- Custom Metrics (all durations in milliseconds) ---
+const landingPageDuration = new Trend("landing_page_duration_ms", true);
+const questionnaireDuration = new Trend("questionnaire_page_duration_ms", true);
+const matchingRolesDuration = new Trend("matching_roles_api_duration_ms", true);
+const generatePdfDuration = new Trend("generate_pdf_api_duration_ms", true);
 const errorRate = new Rate("errors");
 const pdfErrors = new Counter("pdf_generation_errors");
 
@@ -61,24 +74,24 @@ export const options = {
       executor: "ramping-vus",
       startVUs: 0,
       stages: [
-        { duration: "1m", target: 5 },    // Warm up
-        { duration: "2m", target: 19 },   // Ramp to expected load
-        { duration: "5m", target: 19 },   // Sustain expected load
-        { duration: "2m", target: 38 },   // 2x peak (stress test)
-        { duration: "3m", target: 38 },   // Sustain 2x peak
-        { duration: "2m", target: 0 },    // Ramp down
+        { duration: "2m", target: 5 },    // Warm up
+        { duration: "3m", target: 19 },   // Ramp to expected load
+        { duration: "10m", target: 19 },  // Sustain expected load
+        { duration: "3m", target: 38 },   // 2x peak (stress test)
+        { duration: "30m", target: 38 },  // Sustain 2x peak
+        { duration: "4m", target: 0 },    // Ramp down
       ],
       gracefulRampDown: "30s",
     },
   },
   thresholds: {
-    // Page loads should be under 3s for p95
-    landing_page_duration: ["p(95)<3000"],
-    questionnaire_page_duration: ["p(95)<3000"],
-    // API calls should be under 5s for p95
-    matching_roles_api_duration: ["p(95)<5000"],
-    // PDF generation can be slower, under 10s for p95
-    generate_pdf_api_duration: ["p(95)<10000"],
+    // Page loads: p90 < 2s, p95 < 3s, p99 < 5s
+    landing_page_duration_ms: ["p(90)<2000", "p(95)<3000", "p(99)<5000"],
+    questionnaire_page_duration_ms: ["p(90)<2000", "p(95)<3000", "p(99)<5000"],
+    // API calls: p90 < 3s, p95 < 5s, p99 < 8s
+    matching_roles_api_duration_ms: ["p(90)<3000", "p(95)<5000", "p(99)<8000"],
+    // PDF generation: p90 < 5s, p95 < 10s, p99 < 15s
+    generate_pdf_api_duration_ms: ["p(90)<5000", "p(95)<10000", "p(99)<15000"],
     // Error rate should be under 1%
     errors: ["rate<0.01"],
     // Overall HTTP failure rate
@@ -118,7 +131,7 @@ const headers = {
 export default function () {
   const answers = randomAnswers();
 
-  // Step 1: Load landing page
+  // ── Step 1: Landing page (100% of users) ──────────────────
   group("01 - Landing Page", () => {
     const res = http.get(BASE_URL, { headers, tags: { name: "landing_page" } });
     landingPageDuration.add(res.timings.duration);
@@ -126,10 +139,14 @@ export default function () {
       "landing page status 200": (r) => r.status === 200,
       "landing page has content": (r) => r.body.includes("Careers@Gov"),
     }) || errorRate.add(1);
-    sleep(randomThinkTime(1, 3));
   });
 
-  // Step 2: Load questionnaire page
+  // Think time: user reads the landing page
+  sleep(1);
+
+  // ── Step 2: Questionnaire page (80% of users) ────────────
+  if (Math.random() > DROP_OFF.PROCEED_TO_QUESTIONNAIRE) return;
+
   group("02 - Questionnaire Page", () => {
     const res = http.get(`${BASE_URL}/questionnaire`, {
       headers,
@@ -139,10 +156,12 @@ export default function () {
     check(res, {
       "questionnaire page status 200": (r) => r.status === 200,
     }) || errorRate.add(1);
-    sleep(randomThinkTime(2, 5));
   });
 
-  // Step 3: Load static assets (JS bundle + CSS)
+  // Think time: user reads the questionnaire instructions
+  sleep(1);
+
+  // ── Step 3: Static assets (loaded alongside questionnaire) ─
   group("03 - Static Assets", () => {
     const responses = http.batch([
       ["GET", `${BASE_URL}/assets/index-tIaK2_Hj.js`, null, { headers, tags: { name: "js_bundle" } }],
@@ -153,10 +172,9 @@ export default function () {
         "asset loaded": (r) => r.status === 200,
       }) || errorRate.add(1);
     }
-    sleep(randomThinkTime(1, 2));
   });
 
-  // Step 4: Fetch statistics (getCounts)
+  // ── Step 4: Statistics API (background fetch) ─────────────
   group("04 - Get Statistics", () => {
     const url = trpcQueryUrl("statistics.getCounts", {});
     const res = http.get(url, { headers, tags: { name: "get_counts" } });
@@ -171,14 +189,15 @@ export default function () {
         }
       },
     }) || errorRate.add(1);
-    sleep(randomThinkTime(1, 2));
   });
 
-  // Step 5: User fills questionnaire, then fetches matching roles
-  group("05 - Get Matching Roles", () => {
-    // Simulate user think time while filling questionnaire
-    sleep(randomThinkTime(5, 15));
+  // Think time: user fills in the questionnaire form
+  sleep(1);
 
+  // ── Step 5: Get matching roles (70% of users) ─────────────
+  if (Math.random() > DROP_OFF.COMPLETE_QUESTIONNAIRE) return;
+
+  group("05 - Get Matching Roles", () => {
     const url = trpcQueryUrl("questionnaire.getMatchingRoles", answers);
     const res = http.get(url, {
       headers,
@@ -198,11 +217,14 @@ export default function () {
       },
     });
     if (!success) errorRate.add(1);
-
-    sleep(randomThinkTime(3, 8));
   });
 
-  // Step 6: View results page then generate PDF
+  // Think time: user browses the matching roles results
+  sleep(1);
+
+  // ── Step 6: Generate & download PDF (30% of users) ────────
+  if (Math.random() > DROP_OFF.DOWNLOAD_PDF) return;
+
   group("06 - Generate PDF", () => {
     const res = http.get(`${BASE_URL}/results`, {
       headers,
@@ -212,11 +234,10 @@ export default function () {
       "results page status 200": (r) => r.status === 200,
     }) || errorRate.add(1);
 
-    sleep(randomThinkTime(2, 5));
+    // Think time: user reviews results before downloading
+    sleep(1);
 
-    // Generate PDF - this is a mutation (POST)
-    // The PDF endpoint expects roles, booths, exactMatchCount, isFallback
-    // We simulate this by first getting the roles, then requesting PDF
+    // Fetch roles data needed for PDF generation
     const rolesUrl = trpcQueryUrl("questionnaire.getMatchingRoles", answers);
     const rolesRes = http.get(rolesUrl, {
       headers,
@@ -231,14 +252,13 @@ export default function () {
 
       pdfPayload = {
         json: {
-          roles: roles.slice(0, 10), // Limit to first 10 roles for PDF
+          roles: roles.slice(0, 10),
           booths: booths.slice(0, 10),
           exactMatchCount: roles.length,
           isFallback: false,
         },
       };
     } catch {
-      // Fallback payload if roles fetch failed
       pdfPayload = {
         json: {
           roles: [],
@@ -264,14 +284,10 @@ export default function () {
       errorRate.add(1);
       pdfErrors.add(1);
     }
-
-    sleep(randomThinkTime(1, 3));
   });
-}
 
-// --- Think Time (simulates real user pauses) ---
-function randomThinkTime(min, max) {
-  return min + Math.random() * (max - min);
+  // Think time: user views/saves the downloaded PDF
+  sleep(1);
 }
 
 // --- Report Generation ---

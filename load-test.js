@@ -145,10 +145,11 @@ export default function () {
   group("01 - Landing Page", () => {
     const res = http.get(BASE_URL, { headers, tags: { name: "landing_page" } });
     landingPageDuration.add(res.timings.duration);
-    check(res, {
+    const success = check(res, {
       "landing page status 200": (r) => r.status === 200,
       "landing page has content": (r) => r.body.includes("Careers@Gov"),
-    }) || errorRate.add(1);
+    });
+    errorRate.add(!success);
   });
 
   // Think time: user reads the landing page
@@ -163,9 +164,10 @@ export default function () {
       tags: { name: "questionnaire_page" },
     });
     questionnaireDuration.add(res.timings.duration);
-    check(res, {
+    const success = check(res, {
       "questionnaire page status 200": (r) => r.status === 200,
-    }) || errorRate.add(1);
+    });
+    errorRate.add(!success);
   });
 
   // Think time: user reads the questionnaire instructions
@@ -178,9 +180,10 @@ export default function () {
       ["GET", `${BASE_URL}/assets/index-BJ2BuKoM.css`, null, { headers, tags: { name: "css_bundle" } }],
     ]);
     for (const res of responses) {
-      check(res, {
+      const success = check(res, {
         "asset loaded": (r) => r.status === 200,
-      }) || errorRate.add(1);
+      });
+      errorRate.add(!success);
     }
   });
 
@@ -188,7 +191,7 @@ export default function () {
   group("04 - Get Statistics", () => {
     const url = trpcQueryUrl("statistics.getCounts", {});
     const res = http.get(url, { headers, tags: { name: "get_counts" } });
-    check(res, {
+    const success = check(res, {
       "getCounts status 200": (r) => r.status === 200,
       "getCounts has data": (r) => {
         try {
@@ -198,7 +201,8 @@ export default function () {
           return false;
         }
       },
-    }) || errorRate.add(1);
+    });
+    errorRate.add(!success);
   });
 
   // Think time: user fills in the questionnaire form
@@ -226,7 +230,7 @@ export default function () {
         }
       },
     });
-    if (!success) errorRate.add(1);
+    errorRate.add(!success);
   });
 
   // Think time: user browses the matching roles results
@@ -240,9 +244,10 @@ export default function () {
       headers,
       tags: { name: "results_page" },
     });
-    check(res, {
+    const pageSuccess = check(res, {
       "results page status 200": (r) => r.status === 200,
-    }) || errorRate.add(1);
+    });
+    errorRate.add(!pageSuccess);
 
     // Think time: user reviews results before downloading
     sleep(1);
@@ -290,8 +295,8 @@ export default function () {
       "generatePDF status 200": (r) => r.status === 200,
       "generatePDF has response": (r) => r.body && r.body.length > 0,
     });
+    errorRate.add(!pdfSuccess);
     if (!pdfSuccess) {
-      errorRate.add(1);
       pdfErrors.add(1);
     }
   });

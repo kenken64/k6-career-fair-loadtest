@@ -18,6 +18,8 @@ jobs:
     if: ${{ inputs.test_mode == 'smoke' || inputs.test_mode == 'all' }}
     name: Smoke Test
     runs-on: ubuntu-latest
+    env:
+      TZ: Asia/Singapore
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,6 +43,8 @@ jobs:
     needs: smoke-test
     name: Full Load Test
     runs-on: ubuntu-latest
+    env:
+      TZ: Asia/Singapore
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -70,10 +74,12 @@ jobs:
     if: |
       always() &&
       (inputs.test_mode == 'full' || inputs.test_mode == 'all') &&
-      needs.full-load-test.result == 'success'
+      (needs.full-load-test.result == 'success' || needs.full-load-test.result == 'failure')
     needs: full-load-test
     name: Deploy Report to GitHub Pages
     runs-on: ubuntu-latest
+    env:
+      TZ: Asia/Singapore
     permissions:
       pages: write
       id-token: write

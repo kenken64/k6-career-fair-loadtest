@@ -306,9 +306,22 @@ export default function () {
 }
 
 // --- Report Generation ---
+function formatSGT() {
+  const now = new Date();
+  const sgt = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+  const y = sgt.getUTCFullYear();
+  const m = String(sgt.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(sgt.getUTCDate()).padStart(2, "0");
+  const h = String(sgt.getUTCHours()).padStart(2, "0");
+  const min = String(sgt.getUTCMinutes()).padStart(2, "0");
+  return `${y}-${m}-${d} ${h}:${min} SGT`;
+}
+
 export function handleSummary(data) {
   return {
-    "report.html": htmlReport(data),
+    "report.html": htmlReport(data, {
+      title: `K6 Load Test Report - ${formatSGT()}`,
+    }),
     "report.json": JSON.stringify(data, null, 2),
     stdout: textSummary(data, { indent: " ", enableColors: true }),
   };

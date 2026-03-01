@@ -1,0 +1,3 @@
+# k6 generated reports (deployed via CI artifacts, not committed)
+report.html
+report.json

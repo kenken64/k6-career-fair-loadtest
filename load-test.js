@@ -96,6 +96,16 @@ export const options = {
     errors: ["rate<0.01"],
     // Overall HTTP failure rate
     http_req_failed: ["rate<0.01"],
+    // Per-request HTTP failure breakdown
+    "http_req_failed{name:landing_page}": ["rate<0.01"],
+    "http_req_failed{name:questionnaire_page}": ["rate<0.01"],
+    "http_req_failed{name:js_bundle}": ["rate<0.01"],
+    "http_req_failed{name:css_bundle}": ["rate<0.01"],
+    "http_req_failed{name:get_counts}": ["rate<0.01"],
+    "http_req_failed{name:get_matching_roles}": ["rate<0.01"],
+    "http_req_failed{name:results_page}": ["rate<0.01"],
+    "http_req_failed{name:get_roles_for_pdf}": ["rate<0.01"],
+    "http_req_failed{name:generate_pdf}": ["rate<0.01"],
   },
 };
 

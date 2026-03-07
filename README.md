@@ -102,64 +102,64 @@ Each virtual user follows a realistic drop-off funnel with 1s think time between
 
 ## Latest Test Results
 
-> Based on the full 52-minute load test (19,322 iterations, 101,726 HTTP requests)
+> Based on the full 52-minute load test run on 1 Mar 2026 (19,804 iterations, 104,251 HTTP requests)
 
 ### Performance Summary
 
 | Metric | Avg | Med | P90 | P95 | Max | Status |
 |--------|-----|-----|-----|-----|-----|--------|
-| Landing page | 275.94ms | 260.48ms | 356.17ms | 373.50ms | 2,696.42ms | PASS |
-| Questionnaire page | 443.63ms | 429.13ms | 522.47ms | 544.53ms | 1,430.05ms | PASS |
-| Matching roles API | 119.74ms | 101.91ms | 201.80ms | 216.45ms | 670.76ms | PASS |
-| PDF generation | 94.88ms | 85.10ms | 113.54ms | 126.74ms | 318.86ms | PASS |
+| Landing page | 253.74ms | 241.19ms | 321.28ms | 351.07ms | 1,324.83ms | PASS |
+| Questionnaire page | 429.81ms | 414.28ms | 507.47ms | 531.63ms | 1,807.04ms | PASS |
+| Matching roles API | 81.58ms | 67.83ms | 156.84ms | 176.64ms | 1,588.58ms | PASS |
+| PDF generation | 52.40ms | 49.23ms | 59.78ms | 67.38ms | 265.80ms | PASS |
 
 ### Reliability
 
 | Metric | Value | Status |
 |--------|-------|--------|
-| Total HTTP requests | 101,726 | |
-| HTTP failure rate | 0.007% (7 failures) | PASS |
-| Check pass rate | 99.99% (147,369 / 147,379) | PASS |
-| Error rate | 0.007% | PASS |
+| Total HTTP requests | 104,251 | |
+| HTTP failure rate | 0.002% (2 failures) | PASS |
+| Check pass rate | 99.998% (151,043 / 151,046) | PASS |
+| Error rate | 0.002% | PASS |
 
 ### Per-Request Failure Breakdown
 
 | Request | Failures | Total | Failure Rate | Status |
 |---------|----------|-------|-------------|--------|
-| Landing page | 1 | 19,322 | 0.005% | PASS |
-| Questionnaire page | 1 | 15,490 | 0.006% | PASS |
-| JS bundle | 2 | 15,490 | 0.013% | PASS |
-| CSS bundle | 0 | 15,490 | 0.000% | PASS |
-| Statistics API | 2 | 15,490 | 0.013% | PASS |
-| Matching roles API | 0 | 10,841 | 0.000% | PASS |
-| Results page | 1 | 3,201 | 0.031% | PASS |
-| Roles for PDF | 0 | 3,201 | 0.000% | PASS |
-| Generate PDF | 0 | 3,201 | 0.000% | PASS |
+| Landing page | 1 | 19,804 | 0.005% | PASS |
+| Questionnaire page | 0 | 15,877 | 0.000% | PASS |
+| JS bundle | 1 | 15,877 | 0.006% | PASS |
+| CSS bundle | 0 | 15,877 | 0.000% | PASS |
+| Statistics API | 0 | 15,877 | 0.000% | PASS |
+| Matching roles API | 0 | 11,114 | 0.000% | PASS |
+| Results page | 0 | 3,275 | 0.000% | PASS |
+| Roles for PDF | 0 | 3,275 | 0.000% | PASS |
+| Generate PDF | 0 | 3,275 | 0.000% | PASS |
 
 ### Check Results
 
 | Group | Check | Passes | Fails |
 |-------|-------|--------|-------|
-| 01 - Landing Page | landing page status 200 | 19,321 | 1 |
-| 01 - Landing Page | landing page has content | 19,321 | 1 |
-| 02 - Questionnaire Page | questionnaire page status 200 | 15,489 | 1 |
-| 03 - Static Assets | asset loaded | 30,978 | 2 |
-| 04 - Get Statistics | getCounts status 200 | 15,488 | 2 |
-| 04 - Get Statistics | getCounts has data | 15,488 | 2 |
-| 05 - Get Matching Roles | getMatchingRoles status 200 | 10,841 | 0 |
-| 05 - Get Matching Roles | getMatchingRoles has roles | 10,841 | 0 |
-| 06 - Generate PDF | results page status 200 | 3,200 | 1 |
-| 06 - Generate PDF | generatePDF status 200 | 3,201 | 0 |
-| 06 - Generate PDF | generatePDF has response | 3,201 | 0 |
+| 01 - Landing Page | landing page status 200 | 19,803 | 1 |
+| 01 - Landing Page | landing page has content | 19,803 | 1 |
+| 02 - Questionnaire Page | questionnaire page status 200 | 15,877 | 0 |
+| 03 - Static Assets | asset loaded | 31,753 | 1 |
+| 04 - Get Statistics | getCounts status 200 | 15,877 | 0 |
+| 04 - Get Statistics | getCounts has data | 15,877 | 0 |
+| 05 - Get Matching Roles | getMatchingRoles status 200 | 11,114 | 0 |
+| 05 - Get Matching Roles | getMatchingRoles has roles | 11,114 | 0 |
+| 06 - Generate PDF | results page status 200 | 3,275 | 0 |
+| 06 - Generate PDF | generatePDF status 200 | 3,275 | 0 |
+| 06 - Generate PDF | generatePDF has response | 3,275 | 0 |
 
 ### Network
 
 | Metric | Value |
 |--------|-------|
-| Data sent | 90.42 MB |
-| Data received | 21.34 GB |
-| Avg request duration | 274.11ms |
-| Test duration | 52 min 3s |
+| Data sent | 76.44 MB |
+| Data received | 21.87 GB |
+| Avg request duration | 249.25ms |
+| Test duration | 52 min 2s |
 
 ## GitHub Actions Workflow
 
